@@ -1,0 +1,480 @@
+<?php
+// Bắt đầu session và kiểm tra đăng nhập (NÊN CÓ)
+session_start();
+// if (!isset($_SESSION['user_id'])) {
+//   header("Location: login.php");
+//   exit();
+// }
+
+require_once 'connect.php';
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+// --- XỬ LÝ LOGIC CHO TAB THƯỞNG/PHẠT ---
+$view = $_GET['view'] ?? 'pay'; // Mặc định là tab 'pay'
+$message = ''; // Dùng để lưu thông báo
+
+// Hàm tính thuế TNCN (Giữ nguyên)
+function tinhThue($thuNhap) {
+    if ($thuNhap <= 5000000) return $thuNhap * 0.05;
+    elseif ($thuNhap <= 10000000) return $thuNhap * 0.10;
+    elseif ($thuNhap <= 18000000) return $thuNhap * 0.15;
+    elseif ($thuNhap <= 32000000) return $thuNhap * 0.20;
+    elseif ($thuNhap <= 52000000) return $thuNhap * 0.25;
+    elseif ($thuNhap <= 80000000) return $thuNhap * 0.30;
+    else return $thuNhap * 0.35;
+}
+
+if ($view === 'bonus') {
+    // XỬ LÝ THÊM (AN TOÀN VỚI PREPARED STATEMENT)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_bonus'])) {
+        $id_nv = $_POST['id_nhanvien'];
+        $loai = $_POST['loai'];
+        $tieude = $_POST['tieude'];
+        $sotien = $_POST['sotien'];
+        $ngay = $_POST['ngayapdung'];
+
+        $stmt = $conn->prepare("INSERT INTO thuong_phats (id_nhanvien, loai, tieude, sotien, ngayapdung) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("issis", $id_nv, $loai, $tieude, $sotien, $ngay);
+        if ($stmt->execute()) {
+            $message = "<div class='alert alert-success'>Đã thêm thành công!</div>";
+        } else {
+            $message = "<div class='alert alert-danger'>Lỗi: " . $stmt->error . "</div>";
+        }
+        $stmt->close();
+        // Chuyển hướng để tránh F5 gửi lại form
+        header("Location: pay.php?view=bonus&msg=add_success");
+        exit;
+    }
+
+    // XỬ LÝ XOÁ (AN TOÀN VỚI PREPARED STATEMENT)
+    if (isset($_GET['delete_id'])) {
+        $id = $_GET['delete_id'];
+        $stmt = $conn->prepare("DELETE FROM thuong_phats WHERE id_thuongphat = ?");
+        $stmt->bind_param("i", $id);
+        if ($stmt->execute()) {
+            $message = "<div class='alert alert-success'>Đã xoá thành công!</div>";
+        } else {
+            $message = "<div class='alert alert-danger'>Lỗi: " . $stmt->error . "</div>";
+        }
+        $stmt->close();
+        // Chuyển hướng để xoá ?delete_id khỏi URL
+        header("Location: pay.php?view=bonus&msg=delete_success");
+        exit;
+    }
+
+    // Lấy thông báo từ URL (nếu có)
+    if(isset($_GET['msg'])) {
+        if($_GET['msg'] == 'add_success') $message = "<div class='alert alert-success'>Đã thêm thành công!</div>";
+        if($_GET['msg'] == 'delete_success') $message = "<div class='alert alert-success'>Đã xoá thành công!</div>";
+    }
+
+    // Lấy danh sách nhân viên cho form
+    $employees_result = $conn->query("SELECT id_nhanvien, hoten FROM nhan_viens WHERE trangthai = 1 ORDER BY hoten");
+
+    // Lấy danh sách thưởng/phạt
+    $bonus_list_result = $conn->query("
+        SELECT tp.*, nv.hoten 
+        FROM thuong_phats tp
+        JOIN nhan_viens nv ON tp.id_nhanvien = nv.id_nhanvien
+        ORDER BY tp.ngayapdung DESC
+    ");
+}
+
+if ($view === 'pay') {
+    // --- TỐI ƯU: 1 "SIÊU TRUY VẤN" THAY VÌ N+1 TRUY VẤN ---
+    $query = "
+        SELECT 
+            nv.id_nhanvien, 
+            nv.hoten, 
+            cv.tenchucvu, 
+            cv.hesoluong,
+            COALESCE(cc.tong_gio, 0) AS tong_gio,
+            COALESCE(pc_sum.tongphucap, 0) AS tongphucap,
+            COALESCE(tp.tongthuong, 0) AS tongthuong,
+            COALESCE(tp.tongphat, 0) AS tongphat
+        FROM nhan_viens nv
+        JOIN chuc_vus cv ON nv.id_chucvu = cv.id_chucvu
+        LEFT JOIN (
+            -- Tính tổng giờ làm
+            SELECT 
+                id_nhanvien, 
+                ROUND(SUM(TIME_TO_SEC(TIMEDIFF(giora, giovao)) / 3600), 2) as tong_gio 
+            FROM cham_congs 
+            WHERE trangthai = 1 AND giovao IS NOT NULL AND giora IS NOT NULL
+            GROUP BY id_nhanvien
+        ) AS cc ON nv.id_nhanvien = cc.id_nhanvien
+        LEFT JOIN (
+            -- Tính tổng phụ cấp
+            SELECT nvp.id_nhanvien, SUM(pc.sotien) AS tongphucap 
+            FROM nhan_vien_phu_caps nvp 
+            JOIN phu_caps pc ON nvp.id_phucap = pc.id_phucap 
+            GROUP BY nvp.id_nhanvien
+        ) AS pc_sum ON nv.id_nhanvien = pc_sum.id_nhanvien
+        LEFT JOIN (
+            -- Tính tổng thưởng/phạt
+            SELECT 
+                id_nhanvien, 
+                SUM(CASE WHEN loai = 'thưởng' THEN sotien ELSE 0 END) AS tongthuong, 
+                SUM(CASE WHEN loai = 'phạt' THEN sotien ELSE 0 END) AS tongphat 
+            FROM thuong_phats 
+            GROUP BY id_nhanvien
+        ) AS tp ON nv.id_nhanvien = tp.id_nhanvien
+        WHERE nv.trangthai = 1 -- Chỉ tính lương cho nhân viên đang làm
+    ";
+    $result_pay = $conn->query($query);
+}
+
+?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý lương nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Reset và Cài đặt chung */
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2c3e50;
+      --danger-color: #e74c3c;
+      --success-color: #2ecc71;
+      --light-bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text-color: #333;
+      --border-color: #e0e0e0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    /* Header */
+    .header {
+      background-color: var(--card-bg);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); }
+    /* Container chính */
+    .container { display: flex; flex: 1; }
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 { margin-bottom: 25px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar a {
+      display: block; color: #ecf0f1; text-decoration: none;
+      padding: 12px 15px; margin: 5px 0; border-radius: 6px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .sidebar a:hover { background-color: #34495e; color: #ffffff; }
+    .sidebar a.active { background-color: var(--primary-color); color: #ffffff; font-weight: 600; }
+    /* Nội dung chính */
+    .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+    /* Thiết kế "Card" */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .card h2, .card h3 { margin-bottom: 20px; font-weight: 600; color: var(--secondary-color); }
+    
+    /* --- STYLE MỚI CHO TABS --- */
+    .tab-buttons {
+        display: flex;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 25px;
+    }
+    .tab-buttons a {
+        text-decoration: none;
+        padding: 12px 20px;
+        font-weight: 600;
+        color: #7f8c8d;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px; /* Dính vào border-bottom của container */
+        transition: color 0.3s ease, border-color 0.3s ease;
+    }
+    .tab-buttons a:hover {
+        color: #555;
+    }
+    .tab-buttons a.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    
+    /* Form */
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    form .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    form label { display: block; margin-bottom: 6px; font-weight: 500; }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;
+      background-color: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    select:focus {
+      outline: none; border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background-color: #fff;
+    }
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    .form-actions {
+        grid-column: 1 / -1;
+        margin-top: 10px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 1rem; font-weight: 600;
+      text-decoration: none; transition: background-color 0.3s ease, transform 0.2s ease;
+      text-align: center;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background-color: var(--primary-color); color: white; }
+    .btn-primary:hover { background-color: #2980b9; }
+    .btn-danger {
+      background-color: var(--danger-color); color: white;
+      font-size: 0.9rem; padding: 8px 12px;
+    }
+    .btn-danger:hover { background-color: #c0392b; }
+    .logout-btn {
+      background-color: var(--danger-color); color: white; border: none;
+      padding: 10px 15px; cursor: pointer; border-radius: 6px;
+      text-decoration: none; font-weight: 500; transition: background-color 0.3s ease;
+    }
+    .logout-btn:hover { background-color: #c0392b; }
+
+    /* Table */
+    .table-responsive { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 20px;
+    }
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 15px; text-align: left; vertical-align: middle;
+    }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    tbody tr:hover { background-color: var(--light-bg); }
+    td:last-child { text-align: center; }
+    td.action-links a {
+        text-decoration: none;
+        color: var(--danger-color);
+        font-weight: 500;
+    }
+    td.action-links a:hover { text-decoration: underline; }
+    
+    /* Alert Messages */
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+    }
+    .alert-success {
+        color: #155724;
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+    .alert-danger {
+        color: #721c24;
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+
+    /* Footer */
+    footer {
+      background-color: var(--secondary-color); color: #ecf0f1;
+      text-align: center; padding: 20px 0; margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>Quản lý lương</h1>
+  <a href="logout.php" class="logout-btn">Đăng xuất</a>
+</div>
+
+<div class="container">
+  <div class="sidebar">
+    <h2>Menu</h2>
+    <a href="index.php">Trang chủ</a>
+    <a href="employee.php">Nhân viên</a>
+    <a href="pay.php" class="active">Tiền lương</a> <a href="right.php">Phân Quyền</a>
+    <a href="subsidy.php">Phụ Cấp</a>
+    <a href="role.php">Chức Vụ</a>
+    <a href="department.php">Phòng Ban</a>
+    <a href="attendance.php">Chấm Công</a>
+  </div>
+
+  <div class="main-content">
+    <h2>Quản lý lương & thưởng/phạt</h2>
+    
+    <div class="tab-buttons">
+      <a href="pay.php?view=pay" class="<?= $view === 'pay' ? 'active' : '' ?>">Bảng lương</a>
+      <a href="pay.php?view=bonus" class="<?= $view === 'bonus' ? 'active' : '' ?>">Thưởng/Phạt</a>
+    </div>
+
+    <?php echo $message; ?>
+
+    <?php if ($view === 'pay'): ?>
+      <div class="card">
+        <h3>Bảng lương nhân viên</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên nhân viên</th>
+                <th>Chức vụ</th>
+                <th>Giờ làm</th>
+                <th>Hệ số lương</th>
+                <th>Lương cơ bản</th>
+                <th>Phụ cấp</th>
+                <th>Thưởng</th>
+                <th>Phạt</th>
+                <th>Thuế</th>
+                <th>Thực nhận</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php 
+              // VÒNG LẶP ĐÃ ĐƯỢC TỐI ƯU (CHỈ 1 TRUY VẤN)
+              while ($row = $result_pay->fetch_assoc()): 
+                $luongCoBan = $row['tong_gio'] * $row['hesoluong'];
+                $tongLuongTruocThue = $luongCoBan + $row['tongphucap'] + $row['tongthuong'] - $row['tongphat'];
+                $thue = tinhThue($tongLuongTruocThue);
+                $thucnhan = $tongLuongTruocThue - $thue;
+              ?>
+                <tr>
+                  <td><?= $row['id_nhanvien'] ?></td>
+                  <td><?= htmlspecialchars($row['hoten']) ?></td>
+                  <td><?= htmlspecialchars($row['tenchucvu']) ?></td>
+                  <td><?= $row['tong_gio'] ?> giờ</td>
+                  <td><?= number_format($row['hesoluong']) ?></td>
+                  <td><?= number_format($luongCoBan) ?> VND</td>
+                  <td><?= number_format($row['tongphucap']) ?> VND</td>
+                  <td><?= number_format($row['tongthuong']) ?> VND</td>
+                  <td><?= number_format($row['tongphat']) ?> VND</td>
+                  <td><?= number_format($thue) ?> VND</td>
+                  <td><strong><?= number_format($thucnhan) ?> VND</strong></td>
+                </tr>
+              <?php endwhile; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <?php if ($view === 'bonus'): ?>
+      <div class="card">
+        <h3>Thêm Thưởng/Phạt</h3>
+        <form method="POST" action="pay.php?view=bonus">
+          <div class="form-group">
+            <label for="id_nhanvien">Nhân viên:</label>
+            <select name="id_nhanvien" id="id_nhanvien" required>
+                <option value="">-- Chọn nhân viên --</option>
+                <?php while ($row = $employees_result->fetch_assoc()): ?>
+                    <option value="<?= $row['id_nhanvien'] ?>"><?= htmlspecialchars($row['hoten']) ?></option>
+                <?php endwhile; ?>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="loai">Loại:</label>
+            <select name="loai" id="loai">
+              <option value="thưởng">Thưởng</option>
+              <option value="phạt">Phạt</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label for="tieude">Tiêu đề (Lý do):</label>
+            <input type="text" name="tieude" id="tieude" placeholder="VD: Nhân viên xuất sắc tháng 10" required>
+          </div>
+          <div class="form-group">
+            <label for="sotien">Số tiền:</label>
+            <input type="number" name="sotien" id="sotien" placeholder="VD: 500000" required>
+          </div>
+          <div class="form-group">
+            <label for="ngayapdung">Ngày áp dụng:</label>
+            <input type="date" name="ngayapdung" id="ngayapdung" value="<?= date('Y-m-d') ?>" required>
+          </div>
+          <div class="form-actions">
+            <button type="submit" name="add_bonus" class="btn btn-primary">Thêm</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Danh sách Thưởng/Phạt</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Nhân viên</th>
+                <th>Loại</th>
+                <th>Tiêu đề</th>
+                <th>Số tiền</th>
+                <th>Ngày áp dụng</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php while ($row = $bonus_list_result->fetch_assoc()): ?>
+              <tr>
+                <td><?= htmlspecialchars($row['hoten']) ?></td>
+                <td><?= htmlspecialchars($row['loai']) ?></td>
+                <td><?= htmlspecialchars($row['tieude']) ?></td>
+                <td><?= number_format($row['sotien']) ?> VND</td>
+                <td><?= date("d/m/Y", strtotime($row['ngayapdung'])) ?></td>
+                <td class="action-links">
+                  <a href="pay.php?view=bonus&delete_id=<?= $row['id_thuongphat'] ?>" 
+                     onclick="return confirm('Bạn có chắc muốn xoá mục này?')">Xoá</a>
+                </td>
+              </tr>
+              <?php endwhile; ?>
+              <?php if($bonus_list_result->num_rows == 0): ?>
+                <tr>
+                    <td colspan="6" style="text-align: center;">Chưa có dữ liệu thưởng/phạt.</td>
+                </tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+    
+  </div>
+</div>
+
+<footer>
+  &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+</footer>
+</body>
+</html>

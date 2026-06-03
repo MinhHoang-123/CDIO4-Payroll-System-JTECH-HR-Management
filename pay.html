@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý lương nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; display: flex; flex-direction: column; min-height: 100vh; }
+
+    .header {
+      background-color: #000;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 { margin-bottom: 10px; }
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      display: block;
+      margin: 10px 0;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    th { background-color: #bdc3c7; }
+    input[type="number"], input[type="text"] { width: 100px; padding: 4px; }
+
+    button {
+      padding: 6px 12px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .add-form {
+      margin-top: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      max-width: 500px;
+    }
+
+    .add-form input {
+      margin-right: 10px;
+    }
+
+    footer {
+      background-color: #000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý lương</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+           <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Danh sách lương nhân viên</h2>
+
+      <div class="add-form">
+        <h3>Thêm nhân viên mới</h3>
+        <input type="text" id="name-input" placeholder="Tên nhân viên">
+        <input type="number" id="base-input" placeholder="Lương cơ bản">
+        <button onclick="addEmployee()">Thêm</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>id nhân viên</th>
+            <th>Tên nhân viên</th>
+            <th>Lương cơ bản</th>
+            <th>Thưởng</th>
+            <th>Phạt</th>
+            <th>Thuế (10%)</th>
+            <th>Lương thực nhận</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="salary-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    let salaryData = JSON.parse(localStorage.getItem('salaryData')) || [];
+
+    function saveData() {
+      localStorage.setItem('salaryData', JSON.stringify(salaryData));
+    }
+
+    function renderSalaryTable() {
+      const table = document.getElementById('salary-table');
+      table.innerHTML = '';
+
+      salaryData.forEach((item, index) => {
+        const tax = item.base * 0.1;
+        const finalSalary = item.base + item.bonus - item.penalty - tax;
+
+        table.innerHTML += `
+          <tr>
+            <td>${item.name}</td>
+            <td><input type="number" value="${item.base}" onchange="updateBase(${index}, this.value)"></td>
+            <td><input type="number" value="${item.bonus}" onchange="updateBonus(${index}, this.value)"></td>
+            <td><input type="number" value="${item.penalty}" onchange="updatePenalty(${index}, this.value)"></td>
+            <td>${tax.toLocaleString()} VND</td>
+            <td>${finalSalary.toLocaleString()} VND</td>
+            <td>
+              <button onclick="recalculate(${index})">Tính lại</button>
+              <button onclick="deleteEmployee(${index})" style="background:#c0392b;margin-left:5px;">Xóa</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      saveData();
+    }
+
+    function addEmployee() {
+      const name = document.getElementById('name-input').value.trim();
+      const base = parseInt(document.getElementById('base-input').value);
+
+      if (!name || isNaN(base) || base <= 0) {
+        alert('Vui lòng nhập tên và lương cơ bản hợp lệ!');
+        return;
+      }
+
+      salaryData.push({
+        name: name,
+        base: base,
+        bonus: 0,
+        penalty: 0
+      });
+
+      document.getElementById('name-input').value = '';
+      document.getElementById('base-input').value = '';
+      renderSalaryTable();
+    }
+
+    function deleteEmployee(index) {
+      if (confirm("Bạn có chắc muốn xóa nhân viên này?")) {
+        salaryData.splice(index, 1);
+        renderSalaryTable();
+      }
+    }
+
+    function updateBase(index, value) {
+      salaryData[index].base = parseInt(value) || 0;
+    }
+
+    function updateBonus(index, value) {
+      salaryData[index].bonus = parseInt(value) || 0;
+    }
+
+    function updatePenalty(index, value) {
+      salaryData[index].penalty = parseInt(value) || 0;
+    }
+
+    function recalculate(index) {
+      renderSalaryTable();
+    }
+
+    window.onload = renderSalaryTable;
+  </script>
+</body>
+</html>

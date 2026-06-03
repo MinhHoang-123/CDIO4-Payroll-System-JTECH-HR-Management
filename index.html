@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý tiền lương nhân viên</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: #000000;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    footer {
+      background-color: #000000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý tiền lương</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Chào mừng bạn!</h2>
+      <p>Chọn một chức năng từ menu bên trái để bắt đầu quản lý.</p>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+</body>
+</html>

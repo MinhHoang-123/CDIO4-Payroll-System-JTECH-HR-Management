@@ -1,0 +1,411 @@
+<?php
+// Bắt đầu session và kiểm tra (nên có)
+// session_start();
+// if (!isset($_SESSION['user_id'])) {
+//   header("Location: login.php");
+//   exit();
+// }
+
+require_once 'connect.php';
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+$message = ''; // Biến lưu thông báo
+
+// Xử lý xoá phụ cấp nhân viên (AN TOÀN HƠN)
+if (isset($_GET['delete'])) {
+    $id_nv = $_GET['id_nhanvien'];
+    $id_pc = $_GET['id_phucap'];
+    
+    $stmt_del = $conn->prepare("DELETE FROM nhan_vien_phu_caps WHERE id_nhanvien = ? AND id_phucap = ?");
+    $stmt_del->bind_param("ii", $id_nv, $id_pc);
+    $stmt_del->execute();
+    $stmt_del->close();
+    header("Location: subsidy.php?msg=delete_success");
+    exit;
+}
+
+// Thêm loại phụ cấp mới
+if (isset($_POST['add_phucap'])) {
+    $tenphucap = $_POST['tenphucap'];
+    $sotien = $_POST['sotien'];
+    $ghichu = $_POST['ghichu'];
+    $created_at = date("Y-m-d H:i:s");
+
+    $stmt = $conn->prepare("INSERT INTO phu_caps (tenphucap, sotien, ghichu, created_at) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("siss", $tenphucap, $sotien, $ghichu, $created_at);
+    $stmt->execute();
+    $stmt->close();
+    header("Location: subsidy.php?msg=add_type_success");
+    exit;
+}
+
+// Gán phụ cấp cho nhân viên (AN TOÀN & TỐT HƠN)
+if (isset($_POST['add_subsidy'])) {
+    $id_nhanvien = $_POST['id_nhanvien'];
+    $id_phucap = $_POST['id_phucap'];
+    $ngaybatdau = $_POST['ngaybatdau'];
+    $ngayketthuc = $_POST['ngayketthuc'];
+
+    // KIỂM TRA (AN TOÀN HƠN)
+    $stmt_check = $conn->prepare("SELECT * FROM nhan_vien_phu_caps WHERE id_nhanvien=? AND id_phucap=?");
+    $stmt_check->bind_param("ii", $id_nhanvien, $id_phucap);
+    $stmt_check->execute();
+    $check_result = $stmt_check->get_result();
+    $stmt_check->close();
+
+    if ($check_result->num_rows == 0) {
+        $stmt_insert = $conn->prepare("INSERT INTO nhan_vien_phu_caps (id_nhanvien, id_phucap, ngaybatdau, ngayketthuc) VALUES (?, ?, ?, ?)");
+        $stmt_insert->bind_param("iiss", $id_nhanvien, $id_phucap, $ngaybatdau, $ngayketthuc);
+        $stmt_insert->execute();
+        $stmt_insert->close();
+        header("Location: subsidy.php?msg=assign_success");
+        exit;
+    } else {
+        // Đã tồn tại, báo lỗi
+        header("Location: subsidy.php?msg=assign_error");
+        exit;
+    }
+}
+
+// Xử lý thông báo từ URL
+if (isset($_GET['msg'])) {
+    switch ($_GET['msg']) {
+        case 'delete_success':
+            $message = "<div class='alert alert-success'>Đã xoá phụ cấp của nhân viên thành công!</div>";
+            break;
+        case 'add_type_success':
+            $message = "<div class='alert alert-success'>Đã thêm loại phụ cấp mới thành công!</div>";
+            break;
+        case 'assign_success':
+            $message = "<div class='alert alert-success'>Đã gán phụ cấp cho nhân viên thành công!</div>";
+            break;
+        case 'assign_error':
+            $message = "<div class='alert alert-danger'>Lỗi: Nhân viên này đã được gán phụ cấp này rồi!</div>";
+            break;
+    }
+}
+
+// Lấy dữ liệu (Giữ nguyên)
+$nhanvien_result = $conn->query("SELECT id_nhanvien, hoten FROM nhan_viens WHERE trangthai = 1 ORDER BY hoten");
+$phucap_result = $conn->query("SELECT id_phucap, tenphucap, sotien FROM phu_caps ORDER BY tenphucap");
+$list_result = $conn->query("
+    SELECT nvpc.*, nv.hoten, pc.tenphucap, pc.sotien 
+    FROM nhan_vien_phu_caps nvpc
+    JOIN nhan_viens nv ON nvpc.id_nhanvien = nv.id_nhanvien
+    JOIN phu_caps pc ON nvpc.id_phucap = pc.id_phucap
+    ORDER BY nvpc.ngaybatdau DESC
+");
+$ds_phucap = $conn->query("SELECT * FROM phu_caps ORDER BY id_phucap DESC");
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý phụ cấp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Reset và Cài đặt chung */
+        :root {
+          --primary-color: #3498db;
+          --secondary-color: #2c3e50;
+          --danger-color: #e74c3c;
+          --success-color: #2ecc71;
+          --light-bg: #f4f7f6;
+          --card-bg: #ffffff;
+          --text-color: #333;
+          --border-color: #e0e0e0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          background-color: var(--light-bg);
+          color: var(--text-color);
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+        }
+        /* Header */
+        .header {
+          background-color: var(--card-bg);
+          padding: 15px 30px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid var(--border-color);
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .header h1 { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); }
+        /* Container chính */
+        .container { display: flex; flex: 1; }
+        /* Sidebar */
+        .sidebar {
+          width: 230px;
+          background-color: var(--secondary-color);
+          color: white;
+          padding: 20px;
+        }
+        .sidebar h2 { margin-bottom: 25px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+        .sidebar a {
+          display: block; color: #ecf0f1; text-decoration: none;
+          padding: 12px 15px; margin: 5px 0; border-radius: 6px;
+          transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .sidebar a:hover { background-color: #34495e; color: #ffffff; }
+        .sidebar a.active { background-color: var(--primary-color); color: #ffffff; font-weight: 600; }
+        /* Nội dung chính */
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        /* Thiết kế "Card" */
+        .card {
+          background-color: var(--card-bg);
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          padding: 25px;
+          margin-bottom: 30px;
+        }
+        .card h2 { margin-bottom: 20px; font-weight: 600; color: var(--secondary-color); }
+        
+        /* Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+          width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;
+          background-color: #f9f9f9;
+          transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="date"]:focus,
+        select:focus,
+        textarea:focus {
+          outline: none; border-color: var(--primary-color);
+          box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+          background-color: #fff;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        .form-actions { margin-top: 20px; }
+
+        /* Buttons */
+        .btn {
+          padding: 12px 20px; border: none; border-radius: 6px;
+          cursor: pointer; font-size: 1rem; font-weight: 600;
+          text-decoration: none; transition: background-color 0.3s ease, transform 0.2s ease;
+          text-align: center;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: #2980b9; }
+        .btn-danger {
+          background-color: var(--danger-color); color: white;
+          font-size: 0.9rem; padding: 8px 12px;
+        }
+        .btn-danger:hover { background-color: #c0392b; }
+        .logout-btn {
+          background-color: var(--danger-color); color: white; border: none;
+          padding: 10px 15px; cursor: pointer; border-radius: 6px;
+          text-decoration: none; font-weight: 500; transition: background-color 0.3s ease;
+        }
+        .logout-btn:hover { background-color: #c0392b; }
+
+        /* Table */
+        .table-responsive { overflow-x: auto; }
+        table {
+          width: 100%; border-collapse: collapse; margin-top: 20px;
+        }
+        th, td {
+          border-bottom: 1px solid #eee;
+          padding: 15px; text-align: left; vertical-align: middle;
+        }
+        th { background: #f9f9f9; font-weight: 600; color: #555; }
+        tbody tr:hover { background-color: var(--light-bg); }
+        td:last-child { text-align: center; }
+        
+        /* Alert Messages */
+        .alert {
+            padding: 15px; margin-bottom: 20px; border-radius: 6px;
+            border: 1px solid transparent;
+        }
+        .alert-success {
+            color: #155724; background-color: #d4edda; border-color: #c3e6cb;
+        }
+        .alert-danger {
+            color: #721c24; background-color: #f8d7da; border-color: #f5c6cb;
+        }
+
+        /* Footer */
+        footer {
+          background-color: var(--secondary-color); color: #ecf0f1;
+          text-align: center; padding: 20px 0; margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Quản lý tiền lương</h1>
+        <a href="logout.php" class="logout-btn">Đăng xuất</a>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h2>Menu</h2>
+            <a href="index.php">Trang chủ</a>
+            <a href="employee.php">Nhân viên</a>
+            <a href="pay.php">Tiền lương</a>
+            <a href="right.php">Phân Quyền</a>
+            <a href="subsidy.php" class="active">Phụ Cấp</a> <a href="role.php">Chức Vụ</a>
+            <a href="department.php">Phòng Ban</a>
+            <a href="attendance.php">Chấm Công</a>
+        </div>
+
+        <div class="main-content">
+            <?php echo $message; ?>
+
+            <div class="card">
+                <h2>Quản lý Loại Phụ Cấp</h2>
+                <form method="POST">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tenphucap">Tên phụ cấp:</label>
+                            <input type="text" name="tenphucap" id="tenphucap" placeholder="VD: Phụ cấp ăn trưa" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sotien">Số tiền:</label>
+                            <input type="number" name="sotien" id="sotien" placeholder="VD: 500000" required>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="ghichu">Ghi chú:</label>
+                            <textarea name="ghichu" id="ghichu"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" name="add_phucap" class="btn btn-primary">Thêm loại phụ cấp</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Gán phụ cấp cho nhân viên</h2>
+                <form method="POST">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="id_nhanvien">Nhân viên:</label>
+                            <select name="id_nhanvien" id="id_nhanvien" required>
+                                <option value="">-- Chọn nhân viên --</option>
+                                <?php mysqli_data_seek($nhanvien_result, 0); // Reset con trỏ ?>
+                                <?php while ($nv = $nhanvien_result->fetch_assoc()): ?>
+                                    <option value="<?= $nv['id_nhanvien'] ?>"><?= htmlspecialchars($nv['hoten']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_phucap">Phụ cấp:</label>
+                            <select name="id_phucap" id="id_phucap" required>
+                                <option value="">-- Chọn phụ cấp --</option>
+                                <?php mysqli_data_seek($phucap_result, 0); // Reset con trỏ ?>
+                                <?php while ($pc = $phucap_result->fetch_assoc()): ?>
+                                    <option value="<?= $pc['id_phucap'] ?>">
+                                        <?= htmlspecialchars($pc['tenphucap']) ?> - <?= number_format($pc['sotien']) ?>đ
+                                    </option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ngaybatdau">Ngày bắt đầu:</label>
+                            <input type="date" name="ngaybatdau" id="ngaybatdau" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ngayketthuc">Ngày kết thúc:</label>
+                            <input type="date" name="ngayketthuc" id="ngayketthuc" required>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" name="add_subsidy" class="btn btn-primary">Gán phụ cấp</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Danh sách phụ cấp đã gán</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID NV</th>
+                                <th>Tên nhân viên</th>
+                                <th>Phụ cấp</th>
+                                <th>Số tiền</th>
+                                <th>Ngày bắt đầu</th>
+                                <th>Ngày kết thúc</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($row = $list_result->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= $row['id_nhanvien'] ?></td>
+                                    <td><?= htmlspecialchars($row['hoten']) ?></td>
+                                    <td><?= htmlspecialchars($row['tenphucap']) ?></td>
+                                    <td><?= number_format($row['sotien']) ?>đ</td>
+                                    <td><?= date("d/m/Y", strtotime($row['ngaybatdau'])) ?></td>
+                                    <td><?= date("d/m/Y", strtotime($row['ngayketthuc'])) ?></td>
+                                    <td>
+                                        <a class="btn btn-danger" href="?delete=1&id_nhanvien=<?= $row['id_nhanvien'] ?>&id_phucap=<?= $row['id_phucap'] ?>" onclick="return confirm('Bạn có chắc muốn xoá phụ cấp này khỏi nhân viên?')">Xoá</a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                            <?php if($list_result->num_rows == 0): ?>
+                                <tr><td colspan="7" style="text-align: center;">Chưa có nhân viên nào được gán phụ cấp.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Danh sách các Loại Phụ Cấp (Hiện có)</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tên phụ cấp</th>
+                                <th>Số tiền</th>
+                                <th>Ghi chú</th>
+                                <th>Ngày tạo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($pc = $ds_phucap->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= $pc['id_phucap'] ?></td>
+                                    <td><?= htmlspecialchars($pc['tenphucap']) ?></td>
+                                    <td><?= number_format($pc['sotien']) ?>đ</td>
+                                    <td><?= htmlspecialchars($pc['ghichu']) ?></td>
+                                    <td><?= date("d/m/Y", strtotime($pc['created_at'])) ?></td>
+                                </tr>
+                            <?php endwhile; ?>
+                            <?php if($ds_phucap->num_rows == 0): ?>
+                                <tr><td colspan="5" style="text-align: center;">Chưa có loại phụ cấp nào được tạo.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+    </footer>
+</body>
+</html>

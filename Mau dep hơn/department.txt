@@ -1,0 +1,363 @@
+<?php include 'connect.php'; ?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý phòng ban</title>
+  <style>
+    /* Reset và Cài đặt chung */
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2c3e50;
+      --danger-color: #e74c3c;
+      --success-color: #28a745;
+      --light-bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text-color: #333;
+      --border-color: #e0e0e0;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background-color: var(--card-bg);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--secondary-color);
+    }
+
+    /* Container chính */
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      margin-bottom: 25px;
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .sidebar a {
+      display: block;
+      color: #ecf0f1;
+      text-decoration: none;
+      padding: 12px 15px;
+      margin: 5px 0;
+      border-radius: 6px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .sidebar a:hover {
+      background-color: #34495e;
+      color: #ffffff;
+    }
+    .sidebar a.active {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Nội dung chính */
+    .main-content {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    /* Thiết kế "Card" */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .card h2 {
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: var(--secondary-color);
+    }
+
+    /* Form */
+    form label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    form .form-group {
+        margin-bottom: 15px;
+    }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background-color: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background-color: #fff;
+    }
+    textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      text-align: center;
+      display: inline-block; /* Quan trọng cho <a> tags */
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #2980b9;
+    }
+    .btn-danger {
+      background-color: var(--danger-color);
+      color: white;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+    }
+    .btn-danger:hover {
+      background-color: #c0392b;
+    }
+    .logout-btn {
+      background-color: var(--danger-color);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background-color 0.3s ease;
+    }
+    .logout-btn:hover {
+      background-color: #c0392b;
+    }
+
+    /* Table */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 15px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      background: #f9f9f9;
+      font-weight: 600;
+      color: #555;
+    }
+    tbody tr:hover {
+      background-color: var(--light-bg);
+    }
+    td:last-child {
+      text-align: center;
+    }
+
+    /* Footer */
+    footer {
+      background-color: var(--secondary-color);
+      color: #ecf0f1;
+      text-align: center;
+      padding: 20px 0;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Quản lý tiền lương</h1>
+    <a href="logout.php" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.php">Trang chủ</a>
+      <a href="employee.php">Nhân viên</a>
+      <a href="pay.php">Tiền lương</a>
+      <a href="right.php">Phân Quyền</a>
+      <a href="subsidy.php">Phụ Cấp</a>
+      <a href="role.php">Chức Vụ</a>
+      <a href="department.php" class="active">Phòng Ban</a>
+      <a href="attendance.php">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h2>Thêm phòng ban</h2>
+        <form id="addForm">
+          <div class="form-group">
+            <label for="tenphongban">Tên phòng ban:</label>
+            <input type="text" name="tenphongban" id="tenphongban" required>
+          </div>
+          <div class="form-group">
+            <label for="mota">Mô tả:</label>
+            <textarea name="mota" id="mota" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Thêm</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Danh sách phòng ban</h2>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên phòng ban</th>
+                <th>Mô tả</th>
+                <th style="text-align: center;">Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="departmentList">
+              </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    const API_URL = 'department.api.php';
+
+    function loadDepartments() {
+      fetch(`${API_URL}?action=list`)
+        .then(res => res.json())
+        .then(result => {
+          const data = result.data;
+          const tableBody = document.querySelector('#departmentList');
+          tableBody.innerHTML = '';
+
+          if (data.length === 0) {
+              tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Chưa có phòng ban nào.</td></tr>`;
+              return;
+          }
+
+          data.forEach(row => {
+            tableBody.innerHTML += `
+              <tr>
+                <td>${row.id_phongban}</td>
+                <td>${row.tenphongban}</td>
+                <td>${row.mota ?? ''}</td>
+                <td>
+                  <button class="btn btn-danger" onclick="deleteDepartment(${row.id_phongban})">Xoá</button>
+                </td>
+              </tr>
+            `;
+          });
+        })
+        .catch(error => {
+          console.error("Lỗi khi tải phòng ban:", error);
+          document.querySelector('#departmentList').innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">Không thể tải dữ liệu.</td></tr>`;
+        });
+    }
+
+    function deleteDepartment(id) {
+      if (!confirm("Bạn có chắc muốn xoá phòng ban này?")) return;
+
+      fetch(`${API_URL}?action=delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_phongban: id })
+      })
+      .then(res => res.json())
+      .then(res => {
+        alert(res.message || "Đã xoá phòng ban.");
+        loadDepartments();
+      })
+      .catch(error => {
+          alert("Lỗi! Không thể xoá phòng ban. Kiểm tra console.");
+          console.error("Lỗi khi xoá:", error);
+      });
+    }
+
+    document.getElementById('addForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const data = Object.fromEntries(formData.entries());
+
+      fetch(`${API_URL}?action=add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.json())
+      .then(res => {
+        alert(res.message || "Thêm phòng ban thành công!");
+        this.reset();
+        loadDepartments();
+      })
+      .catch(error => {
+          alert("Lỗi! Không thể thêm phòng ban. Kiểm tra console.");
+          console.error("Lỗi khi thêm:", error);
+      });
+    });
+
+    window.onload = loadDepartments;
+  </script>
+
+</body>
+</html>

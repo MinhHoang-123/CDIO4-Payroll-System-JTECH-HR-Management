@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quản lý phòng ban</title>
+  <style>
+    /* CSS như bạn đã có, thêm chút nhỏ cho textarea */
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .header {
+      background-color: #000000; color: white; padding: 10px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header .logout-btn {
+      background-color: #e74c3c; color: white; border: none;
+      padding: 8px 12px; cursor: pointer; border-radius: 4px; text-decoration: none;
+    }
+    .container {
+      display: flex; flex: 1;
+    }
+    .sidebar {
+      width: 220px; background-color: #000000; color: white; padding: 20px;
+    }
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+    .sidebar a {
+      display: block; color: white; text-decoration: none; margin: 10px 0;
+    }
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+    .main-content {
+      flex: 1; padding: 20px; background-color: #ecf0f1;
+    }
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc; padding: 10px; text-align: left;
+    }
+    th {
+      background-color: #bdc3c7;
+    }
+    .form-group {
+      margin: 10px 0;
+    }
+    input[type="text"], textarea {
+      width: 100%; padding: 8px; margin-top: 5px;
+      resize: vertical;
+    }
+    textarea {
+      height: 60px;
+    }
+    button {
+      padding: 8px 12px; margin-top: 10px;
+      background-color: #2980b9; color: white;
+      border: none; cursor: pointer;
+    }
+    .action-btn {
+      margin-right: 5px; padding: 5px 10px;
+    }
+    footer {
+      background-color: #000000; color: white;
+      text-align: center; padding: 10px 0;
+    }
+    .remove-btn {
+      color: red; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý phòng ban</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Danh sách phòng ban</h2>
+
+      <div>
+        <div class="form-group">
+          <label>Tên phòng ban:</label>
+          <input type="text" id="department-name" />
+        </div>
+        <div class="form-group">
+          <label>Mô tả:</label>
+          <textarea id="department-description" placeholder="Mô tả phòng ban (tùy chọn)"></textarea>
+        </div>
+        <button onclick="addDepartment()">Thêm phòng ban</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tên phòng ban</th>
+            <th>Mô tả</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="department-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    // Hiện tại chưa có dữ liệu, lấy từ server
+    async function fetchDepartments() {
+      const res = await fetch('department.php?action=list');
+      const data = await res.json();
+      return data;
+    }
+
+    async function renderDepartments() {
+      const departments = await fetchDepartments();
+      const table = document.getElementById('department-table');
+      table.innerHTML = '';
+      departments.forEach((dept) => {
+        table.innerHTML += `
+          <tr>
+            <td>${dept.tenphongban}</td>
+            <td>${dept.mota || ''}</td>
+            <td>
+              <button class="action-btn" onclick="editDepartment(${dept.id_phongban}, '${escapeHtml(dept.tenphongban)}', '${escapeHtml(dept.mota)}')">Sửa</button>
+              <button class="action-btn remove-btn" onclick="deleteDepartment(${dept.id_phongban})">Xoá</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // Thêm phòng ban
+    async function addDepartment() {
+      const tenphongban = document.getElementById('department-name').value.trim();
+      const mota = document.getElementById('department-description').value.trim();
+
+      if (!tenphongban) {
+        alert('Vui lòng nhập tên phòng ban.');
+        return;
+      }
+
+      const res = await fetch('department.php?action=add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tenphongban, mota})
+      });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        clearForm();
+        renderDepartments();
+      } else {
+        alert(result.message || 'Lỗi thêm phòng ban');
+      }
+    }
+
+    // Sửa phòng ban (hiện popup sửa)
+    function editDepartment(id, tenphongban, mota) {
+      const newName = prompt('Sửa tên phòng ban:', tenphongban);
+      if (newName === null) return; // cancel
+      if (!newName.trim()) {
+        alert('Tên phòng ban không được để trống!');
+        return;
+      }
+
+      const newDesc = prompt('Sửa mô tả:', mota || '');
+      if (newDesc === null) return;
+
+      updateDepartment(id, newName.trim(), newDesc.trim());
+    }
+
+    // Gửi yêu cầu sửa phòng ban
+    async function updateDepartment(id, tenphongban, mota) {
+      const res = await fetch('department.php?action=edit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id_phongban: id, tenphongban, mota})
+      });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        renderDepartments();
+      } else {
+        alert(result.message || 'Lỗi cập nhật phòng ban');
+      }
+    }
+
+    // Xóa phòng ban
+    async function deleteDepartment(id) {
+      if (!confirm('Bạn chắc chắn muốn xoá phòng ban này?')) return;
+
+      const res = await fetch('department.php?action=delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id_phongban: id})
+      });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        renderDepartments();
+      } else {
+        alert(result.message || 'Lỗi xoá phòng ban');
+      }
+    }
+
+    // Xóa form
+    function clearForm() {
+      document.getElementById('department-name').value = '';
+      document.getElementById('department-description').value = '';
+    }
+
+    // Tránh lỗi nháy khi show prompt, escape HTML
+    function escapeHtml(text = '') {
+      return text.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+    }
+
+    // Khởi tạo khi load trang
+    renderDepartments();
+  </script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý chấm công nhân viên</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: #000000;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #bdc3c7;
+    }
+
+    .form-group {
+      margin: 10px 0;
+    }
+
+    input[type="text"], input[type="date"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 10px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn {
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+
+    footer {
+      background-color: #000000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .remove-btn {
+      color: red;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý chấm công nhân viên</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Chấm công nhân viên</h2>
+
+      <div>
+        <h3>Chấm công cho nhân viên</h3>
+        <div class="form-group">
+          <label>Nhân viên:</label>
+          <input type="text" id="employee-name" placeholder="Tên nhân viên">
+        </div>
+        <div class="form-group">
+          <label>Ngày:</label>
+          <input type="date" id="attendance-date">
+        </div>
+        <button onclick="addAttendance()">Chấm công</button>
+      </div>
+
+      <div>
+        <h3>Đăng ký nghỉ phép</h3>
+        <div class="form-group">
+          <label>Nhân viên:</label>
+          <input type="text" id="leave-employee-name" placeholder="Tên nhân viên">
+        </div>
+        <div class="form-group">
+          <label>Ngày nghỉ phép:</label>
+          <input type="date" id="leave-date">
+        </div>
+        <button onclick="requestLeave()">Đăng ký nghỉ phép</button>
+      </div>
+
+      <div>
+        <h3>Chấm công và nghỉ phép</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Tên nhân viên</th>
+              <th>Ngày</th>
+              <th>Loại</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="attendance-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    // Lấy dữ liệu chấm công từ localStorage
+    let attendances = JSON.parse(localStorage.getItem('attendances')) || [];
+
+    // Hiển thị danh sách chấm công và nghỉ phép
+    function renderAttendances() {
+      const attendanceTable = document.getElementById('attendance-table');
+      attendanceTable.innerHTML = '';
+      attendances.forEach((attendance, index) => {
+        attendanceTable.innerHTML += `
+          <tr>
+            <td>${attendance.employeeName}</td>
+            <td>${attendance.date}</td>
+            <td>${attendance.type}</td>
+            <td>
+              <button class="action-btn" onclick="editAttendance(${index})">Sửa</button>
+              <button class="action-btn remove-btn" onclick="deleteAttendance(${index})">Xoá</button>
+            </td>
+          </tr>
+        `;
+      });
+      localStorage.setItem('attendances', JSON.stringify(attendances));
+    }
+
+    // Chấm công cho nhân viên
+    function addAttendance() {
+      const employeeName = document.getElementById('employee-name').value;
+      const attendanceDate = document.getElementById('attendance-date').value;
+
+      if (!employeeName || !attendanceDate) {
+        alert('Vui lòng nhập đầy đủ thông tin chấm công.');
+        return;
+      }
+
+      const newAttendance = {
+        employeeName: employeeName,
+        date: attendanceDate,
+        type: 'Chấm công'
+      };
+      attendances.push(newAttendance);
+      renderAttendances();
+      clearForm();
+    }
+
+    // Đăng ký nghỉ phép
+    function requestLeave() {
+      const employeeName = document.getElementById('leave-employee-name').value;
+      const leaveDate = document.getElementById('leave-date').value;
+
+      if (!employeeName || !leaveDate) {
+        alert('Vui lòng nhập đầy đủ thông tin nghỉ phép.');
+        return;
+      }
+
+      const newLeave = {
+        employeeName: employeeName,
+        date: leaveDate,
+        type: 'Nghỉ phép'
+      };
+      attendances.push(newLeave);
+      renderAttendances();
+      clearForm();
+    }
+
+    // Sửa chấm công hoặc nghỉ phép
+    function editAttendance(index) {
+      const attendance = attendances[index];
+      const newDate = prompt('Sửa ngày', attendance.date);
+      const newType = prompt('Sửa loại (Chấm công / Nghỉ phép)', attendance.type);
+
+      if (newDate && newType) {
+        attendances[index].date = newDate;
+        attendances[index].type = newType;
+        renderAttendances();
+      }
+    }
+
+    // Xoá chấm công hoặc nghỉ phép
+    function deleteAttendance(index) {
+      if (confirm('Bạn chắc chắn muốn xoá chấm công hoặc nghỉ phép này?')) {
+        attendances.splice(index, 1);
+        renderAttendances();
+      }
+    }
+
+    // Xóa form sau khi chấm công hoặc đăng ký nghỉ phép
+    function clearForm() {
+      document.getElementById('employee-name').value = '';
+      document.getElementById('attendance-date').value = '';
+      document.getElementById('leave-employee-name').value = '';
+      document.getElementById('leave-date').value = '';
+    }
+
+    // Khởi tạo trang
+    renderAttendances();
+  </script>
+</body>
+</html>

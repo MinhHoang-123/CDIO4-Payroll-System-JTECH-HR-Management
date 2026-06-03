@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý quyền nhân viên</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: #000000;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #bdc3c7;
+    }
+
+    .form-group {
+      margin: 10px 0;
+    }
+
+    input[type="text"], input[type="date"], select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 10px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn {
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+
+    footer {
+      background-color: #000000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .remove-btn {
+      color: red;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý quyền nhân viên</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+            <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Danh sách quyền nhân viên</h2>
+
+      <div>
+        <h3>Thêm quyền mới cho nhân viên</h3>
+        <div class="form-group">
+          <label>Tên quyền:</label>
+          <input type="text" id="right-name">
+        </div>
+        <div class="form-group">
+          <label>Mô tả quyền:</label>
+          <input type="text" id="right-description">
+        </div>
+        <button onclick="addRight()">Thêm quyền</button>
+      </div>
+
+      <div>
+        <h3>Gán quyền cho nhân viên</h3>
+        <div class="form-group">
+          <label>Chọn nhân viên:</label>
+          <select id="employee-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Chọn quyền:</label>
+          <select id="right-select"></select>
+        </div>
+        <button onclick="assignRight()">Gán quyền</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tên nhân viên</th>
+            <th>Quyền</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="rights-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    // Lấy dữ liệu nhân viên và quyền từ localStorage
+    let employees = JSON.parse(localStorage.getItem('employees')) || [];
+    let rights = JSON.parse(localStorage.getItem('rights')) || [];
+    let employeeRights = JSON.parse(localStorage.getItem('employeeRights')) || [];
+
+    // Hiển thị danh sách nhân viên
+    function renderEmployees() {
+      const employeeSelect = document.getElementById('employee-select');
+      employeeSelect.innerHTML = '';
+      employees.forEach((emp, index) => {
+        employeeSelect.innerHTML += `<option value="${index}">${emp.name}</option>`;
+      });
+    }
+
+    // Hiển thị danh sách quyền
+    function renderRights() {
+      const rightSelect = document.getElementById('right-select');
+      rightSelect.innerHTML = '';
+      rights.forEach((right, index) => {
+        rightSelect.innerHTML += `<option value="${index}">${right.name}</option>`;
+      });
+    }
+
+    // Hiển thị danh sách quyền của nhân viên
+    function renderEmployeeRights() {
+      const rightsTable = document.getElementById('rights-table');
+      rightsTable.innerHTML = '';
+      employeeRights.forEach((empRight, index) => {
+        const employee = employees[empRight.employeeIndex];
+        const right = rights[empRight.rightIndex];
+        rightsTable.innerHTML += `
+          <tr>
+            <td>${employee.name}</td>
+            <td>${right.name}</td>
+            <td>
+              <button class="action-btn" onclick="editRight(${index})">Sửa</button>
+              <button class="action-btn" onclick="removeRight(${index})">Xoá</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // Thêm quyền mới
+    function addRight() {
+      const name = document.getElementById('right-name').value;
+      const description = document.getElementById('right-description').value;
+
+      if (!name || !description) {
+        alert('Vui lòng điền đầy đủ thông tin quyền.');
+        return;
+      }
+
+      const newRight = { name, description };
+      rights.push(newRight);
+      localStorage.setItem('rights', JSON.stringify(rights));
+      renderRights();
+    }
+
+    // Gán quyền cho nhân viên
+    function assignRight() {
+      const employeeIndex = document.getElementById('employee-select').value;
+      const rightIndex = document.getElementById('right-select').value;
+
+      if (employeeIndex === '' || rightIndex === '') {
+        alert('Vui lòng chọn nhân viên và quyền.');
+        return;
+      }
+
+      const newEmployeeRight = { employeeIndex: parseInt(employeeIndex), rightIndex: parseInt(rightIndex) };
+      employeeRights.push(newEmployeeRight);
+      localStorage.setItem('employeeRights', JSON.stringify(employeeRights));
+      renderEmployeeRights();
+    }
+
+    // Sửa quyền nhân viên
+    function editRight(index) {
+      const empRight = employeeRights[index];
+      const employee = employees[empRight.employeeIndex];
+      const right = rights[empRight.rightIndex];
+
+      const newRightIndex = prompt('Chọn quyền mới cho ' + employee.name, right.name);
+      if (newRightIndex !== null) {
+        empRight.rightIndex = rights.findIndex(r => r.name === newRightIndex);
+        localStorage.setItem('employeeRights', JSON.stringify(employeeRights));
+        renderEmployeeRights();
+      }
+    }
+
+    // Xoá quyền nhân viên
+    function removeRight(index) {
+      if (confirm('Bạn chắc chắn muốn xoá quyền này?')) {
+        employeeRights.splice(index, 1);
+        localStorage.setItem('employeeRights', JSON.stringify(employeeRights));
+        renderEmployeeRights();
+      }
+    }
+
+    // Khởi tạo trang
+    renderEmployees();
+    renderRights();
+    renderEmployeeRights();
+  </script>
+</body>
+</html>

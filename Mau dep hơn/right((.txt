@@ -1,0 +1,357 @@
+<?php
+session_start();
+require 'connect.php';
+
+if (!isset($_SESSION['user_id'])) {
+  header("Location: login.php");
+  exit();
+}
+
+// Xử lý phân quyền khi gửi form
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $user_id = $_POST['user_id'];
+  $pages = $_POST['page'] ?? []; // Thêm ?? [] để tránh lỗi nếu không có gì được check
+
+  // Xoá quyền cũ
+  $stmt = $conn->prepare("DELETE FROM permissions WHERE user_id = ?");
+  $stmt->bind_param("i", $user_id);
+  $stmt->execute();
+  $stmt->close();
+
+  // Thêm quyền mới
+  $stmt_insert = $conn->prepare("INSERT INTO permissions (user_id, page, can_view, can_add, can_edit, can_delete) VALUES (?, ?, ?, ?, ?, ?)");
+  
+  foreach ($pages as $page => $rights) {
+    $can_view = isset($rights['view']) ? 1 : 0;
+    $can_add = isset($rights['add']) ? 1 : 0;
+    $can_edit = isset($rights['edit']) ? 1 : 0;
+    $can_delete = isset($rights['delete']) ? 1 : 0;
+
+    $stmt_insert->bind_param("isiiii", $user_id, $page, $can_view, $can_add, $can_edit, $can_delete);
+    $stmt_insert->execute();
+  }
+  $stmt_insert->close();
+
+  // CHUYỂN HƯỚNG: Tốt hơn là dùng alert
+  header("Location: right.php?user_id=" . $user_id . "&msg=save_success");
+  exit;
+}
+
+// Lấy thông báo (nếu có)
+$message = '';
+if(isset($_GET['msg']) && $_GET['msg'] == 'save_success') {
+    $message = "<div class='alert alert-success'>Phân quyền đã được cập nhật thành công!</div>";
+}
+
+// Lấy user_id đang được chọn (từ URL, sau khi redirect)
+$selected_user_id = $_GET['user_id'] ?? null;
+
+// Lấy danh sách user và các trang cần phân quyền
+$users = $conn->query("SELECT id, name FROM users");
+$pages = ['employee.php', 'pay.php', 'subsidy.php', 'role.php', 'department.php', 'attendance.php'];
+
+// Lấy danh sách phân quyền (cho bảng ở dưới)
+$sql_list = "SELECT p.*, u.name 
+             FROM permissions p 
+             JOIN users u ON p.user_id = u.id 
+             ORDER BY u.name, p.page";
+$result_list = $conn->query($sql_list);
+?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Phân quyền người dùng</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Reset và Cài đặt chung */
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2c3e50;
+      --danger-color: #e74c3c;
+      --success-color: #2ecc71;
+      --light-bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text-color: #333;
+      --border-color: #e0e0e0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    /* Header */
+    .header {
+      background-color: var(--card-bg);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); }
+    /* Container chính */
+    .container { display: flex; flex: 1; }
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 { margin-bottom: 25px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar a {
+      display: block; color: #ecf0f1; text-decoration: none;
+      padding: 12px 15px; margin: 5px 0; border-radius: 6px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .sidebar a:hover { background-color: #34495e; color: #ffffff; }
+    .sidebar a.active { background-color: var(--primary-color); color: #ffffff; font-weight: 600; }
+    /* Nội dung chính */
+    .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+    /* Thiết kế "Card" */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .card h2 { margin-bottom: 20px; font-weight: 600; color: var(--secondary-color); }
+    
+    /* Form */
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+    select {
+      width: 100%; max-width: 400px;
+      padding: 12px; border: 1px solid #ddd; border-radius: 6px;
+      background-color: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    select:focus {
+      outline: none; border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background-color: #fff;
+    }
+    
+    /* Buttons */
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 1rem; font-weight: 600;
+      text-decoration: none; transition: background-color 0.3s ease, transform 0.2s ease;
+      text-align: center;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background-color: var(--primary-color); color: white; }
+    .btn-primary:hover { background-color: #2980b9; }
+    .logout-btn {
+      background-color: var(--danger-color); color: white; border: none;
+      padding: 10px 15px; cursor: pointer; border-radius: 6px;
+      text-decoration: none; font-weight: 500; transition: background-color 0.3s ease;
+    }
+    .logout-btn:hover { background-color: #c0392b; }
+
+    /* Table */
+    .table-responsive { overflow-x: auto; margin-top: 20px; }
+    table {
+      width: 100%; border-collapse: collapse;
+    }
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 15px; text-align: left; vertical-align: middle;
+    }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    tbody tr:hover { background-color: var(--light-bg); }
+    td:last-child { text-align: center; }
+    td.action-links a {
+        text-decoration: none; color: var(--primary-color);
+        font-weight: 500; margin: 0 5px;
+    }
+    td.action-links a.danger { color: var(--danger-color); }
+    td.action-links a:hover { text-decoration: underline; }
+    td.perm-icon { text-align: center; font-size: 1.2rem; }
+
+    /* Alert Messages */
+    .alert {
+        padding: 15px; margin-bottom: 20px; border-radius: 6px;
+        border: 1px solid transparent;
+    }
+    .alert-success {
+        color: #155724; background-color: #d4edda; border-color: #c3e6cb;
+    }
+
+    /* Footer */
+    footer {
+      background-color: var(--secondary-color); color: #ecf0f1;
+      text-align: center; padding: 20px 0; margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý tiền lương</h1>
+    <a href="logout.php" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.php">Trang chủ</a>
+      <a href="employee.php">Nhân viên</a>
+      <a href="pay.php">Tiền lương</a>
+      <a href="right.php" class="active">Phân Quyền</a> <a href="subsidy.php">Phụ Cấp</a>
+      <a href="role.php">Chức Vụ</a>
+      <a href="department.php">Phòng Ban</a>
+      <a href="attendance.php">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <?php echo $message; ?>
+
+      <div class="card">
+        <h2>Phân quyền cho người dùng</h2>
+        <form method="POST">
+          <div class="form-group">
+            <label for="userSelect">Chọn người dùng:</label>
+            <select name="user_id" id="userSelect" required>
+              <option value="">-- Chọn --</option>
+              <?php while($row = $users->fetch_assoc()): ?>
+                <option value="<?= $row['id'] ?>" <?= ($row['id'] == $selected_user_id) ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($row['name']) ?>
+                </option>
+              <?php endwhile; ?>
+            </select>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Trang</th>
+                  <th style="text-align: center;">Xem</th>
+                  <th style="text-align: center;">Thêm</th>
+                  <th style="text-align: center;">Sửa</th>
+                  <th style="text-align: center;">Xoá</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pages as $page): ?>
+                  <tr>
+                    <td><?= $page ?></td>
+                    <td style="text-align: center;"><input type="checkbox" id="perm-<?= $page ?>-view" name="page[<?= $page ?>][view]"></td>
+                    <td style="text-align: center;"><input type="checkbox" id="perm-<?= $page ?>-add" name="page[<?= $page ?>][add]"></td>
+                    <td style="text-align: center;"><input type="checkbox" id="perm-<?= $page ?>-edit" name="page[<?= $page ?>][edit]"></td>
+                    <td style="text-align: center;"><input type="checkbox" id="perm-<?= $page ?>-delete" name="page[<?= $page ?>][delete]"></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Lưu phân quyền</button>
+        </form>
+      </div>
+
+      <div class="card">
+          <h2>Danh sách phân quyền hiện tại</h2>
+          <div class="table-responsive">
+              <table>
+                  <thead>
+                      <tr>
+                          <th>Người dùng</th>
+                          <th>Trang</th>
+                          <th class="perm-icon">Xem</th>
+                          <th class="perm-icon">Thêm</th>
+                          <th class="perm-icon">Sửa</th>
+                          <th class="perm-icon">Xoá</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <?php while ($row = $result_list->fetch_assoc()): ?>
+                      <tr>
+                          <td><?= htmlspecialchars($row['name']) ?></td>
+                          <td><?= $row['page'] ?></td>
+                          <td class="perm-icon"><?= $row['can_view'] ? '✔️' : '❌' ?></td>
+                          <td class="perm-icon"><?= $row['can_add'] ? '✔️' : '❌' ?></td>
+                          <td class="perm-icon"><?= $row['can_edit'] ? '✔️' : '❌' ?></td>
+                          <td class="perm-icon"><?= $row['can_delete'] ? '✔️' : '❌' ?></td>
+                      </tr>
+                      <?php endwhile; ?>
+                      <?php if($result_list->num_rows == 0): ?>
+                        <tr><td colspan="6" style="text-align: center;">Chưa có phân quyền nào.</td></tr>
+                      <?php endif; ?>
+                  </tbody>
+              </table>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    const userSelect = document.getElementById('userSelect');
+    
+    // 1. Chạy khi người dùng thay đổi dropdown
+    userSelect.addEventListener('change', (e) => {
+        const userId = e.target.value;
+        loadUserPermissions(userId);
+    });
+
+    // 2. Chạy khi trang tải xong (để load quyền cho user đã selected, nếu có)
+    document.addEventListener('DOMContentLoaded', () => {
+        const selectedUserId = userSelect.value;
+        if (selectedUserId) {
+            loadUserPermissions(selectedUserId);
+        }
+    });
+
+    // Hàm reset tất cả checkbox
+    function resetCheckboxes() {
+        document.querySelectorAll('.main-content input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+    }
+
+    // Hàm chính: Lấy dữ liệu và check
+    async function loadUserPermissions(userId) {
+        resetCheckboxes(); // Xoá check cũ
+        if (!userId) return; // Nếu chọn "-- Chọn --" thì thoát
+
+        try {
+            // Gọi đến API mới
+            const response = await fetch(`get_permissions.api.php?user_id=${userId}`);
+            if (!response.ok) {
+                throw new Error('Lỗi khi tải quyền');
+            }
+            const permissions = await response.json();
+
+            // Duyệt qua các quyền và check
+            permissions.forEach(perm => {
+                const page = perm.page;
+                // Dùng try-catch phòng trường hợp 1 trang bị xoá tên
+                try {
+                    if (perm.can_view == 1) document.getElementById(`perm-${page}-view`).checked = true;
+                    if (perm.can_add == 1) document.getElementById(`perm-${page}-add`).checked = true;
+                    if (perm.can_edit == 1) document.getElementById(`perm-${page}-edit`).checked = true;
+                    if (perm.can_delete == 1) document.getElementById(`perm-${page}-delete`).checked = true;
+                } catch (e) {
+                    console.warn(`Không tìm thấy checkbox cho trang: ${page}`);
+                }
+            });
+
+        } catch (error) {
+            console.error('Lỗi khi fetch quyền:', error);
+            alert('Không thể tải dữ liệu quyền cho người dùng này.');
+        }
+    }
+  </script>
+</body>
+</html>

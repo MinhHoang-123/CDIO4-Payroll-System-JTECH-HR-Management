@@ -1,0 +1,335 @@
+<?php include 'connect.php'; ?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý chức vụ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Reset và Cài đặt chung */
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2c3e50;
+      --danger-color: #e74c3c;
+      --warning-color: #f1c40f;
+      --light-bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text-color: #333;
+      --border-color: #e0e0e0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    /* Header */
+    .header {
+      background-color: var(--card-bg);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 600; color: var(--secondary-color); }
+    /* Container chính */
+    .container { display: flex; flex: 1; }
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 { margin-bottom: 25px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar a {
+      display: block; color: #ecf0f1; text-decoration: none;
+      padding: 12px 15px; margin: 5px 0; border-radius: 6px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .sidebar a:hover { background-color: #34495e; color: #ffffff; }
+    .sidebar a.active { background-color: var(--primary-color); color: #ffffff; font-weight: 600; }
+    /* Nội dung chính */
+    .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+    /* Thiết kế "Card" */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .card h2 { margin-bottom: 20px; font-weight: 600; color: var(--secondary-color); }
+    
+    /* Form */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;
+      background-color: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none; border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background-color: #fff;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 1rem; font-weight: 600;
+      text-decoration: none; transition: background-color 0.3s ease, transform 0.2s ease;
+      text-align: center;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background-color: var(--primary-color); color: white; }
+    .btn-primary:hover { background-color: #2980b9; }
+    .btn-secondary { background-color: #7f8c8d; color: white; }
+    .btn-secondary:hover { background-color: #6c7a7b; }
+    .btn-danger {
+      background-color: var(--danger-color); color: white;
+      font-size: 0.9rem; padding: 8px 12px;
+    }
+    .btn-danger:hover { background-color: #c0392b; }
+    .btn-warning {
+      background-color: var(--warning-color); color: #333;
+      font-size: 0.9rem; padding: 8px 12px;
+    }
+    .btn-warning:hover { background-color: #f39c12; }
+
+    .logout-btn {
+      background-color: var(--danger-color); color: white; border: none;
+      padding: 10px 15px; cursor: pointer; border-radius: 6px;
+      text-decoration: none; font-weight: 500; transition: background-color 0.3s ease;
+    }
+    .logout-btn:hover { background-color: #c0392b; }
+
+    /* Table */
+    .table-responsive { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 20px;
+    }
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 15px; text-align: left; vertical-align: middle;
+    }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    tbody tr:hover { background-color: var(--light-bg); }
+    td:last-child { text-align: center; }
+    
+    /* Footer */
+    footer {
+      background-color: var(--secondary-color); color: #ecf0f1;
+      text-align: center; padding: 20px 0; margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý tiền lương</h1>
+    <a href="logout.php" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.php">Trang chủ</a>
+      <a href="employee.php">Nhân viên</a>
+      <a href="pay.php">Tiền lương</a>
+      <a href="right.php">Phân Quyền</a>
+      <a href="subsidy.php">Phụ Cấp</a>
+      <a href="role.php" class="active">Chức Vụ</a> <a href="department.php">Phòng Ban</a>
+      <a href="attendance.php">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h2>Thêm/Cập nhật chức vụ</h2>
+        <form onsubmit="event.preventDefault(); saveRole();">
+          <input type="hidden" id="id_chucvu">
+          <div class="form-grid">
+              <div class="form-group">
+                  <label for="tenchucvu">Tên chức vụ</label>
+                  <input id="tenchucvu" type="text" placeholder="VD: Lập trình viên" required>
+              </div>
+              <div class="form-group">
+                  <label for="hesoluong">Hệ số lương</label>
+                  <input id="hesoluong" type="number" placeholder="VD: 5.5" step="0.01" required>
+              </div>
+          </div>
+          <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Lưu</button>
+              <button type="button" class="btn btn-secondary" onclick="resetForm()">Làm mới</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Danh sách chức vụ</h2>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên chức vụ</th>
+                <th>Hệ số lương</th>
+                <th style="text-align: center;">Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="roleTable">
+              </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    window.onload = loadRoles;
+
+    function loadRoles() {
+      fetch('role.api.php')
+        .then(res => res.json())
+        .then(data => {
+          const table = document.getElementById('roleTable');
+          table.innerHTML = '';
+          if (data.status === 'success') {
+            if (data.data.length === 0) {
+                table.innerHTML = `<tr><td colspan="4" style="text-align: center;">Chưa có chức vụ nào.</td></tr>`;
+                return;
+            }
+            data.data.forEach(role => {
+              table.innerHTML += `
+                <tr>
+                  <td>${role.id_chucvu}</td>
+                  <td>${role.tenchucvu}</td>
+                  <td>${role.hesoluong}</td>
+                  <td>
+                    <button onclick='editRole(${JSON.stringify(role)})' class="btn btn-warning">Sửa</button>
+                    <button onclick="deleteRole(${role.id_chucvu})" class="btn btn-danger">Xoá</button>
+                  </td>
+                </tr>
+              `;
+            });
+          } else {
+            table.innerHTML = `<tr><td colspan="4" style="text-align: center; color: red;">${data.message}</td></tr>`;
+          }
+        });
+    }
+
+    // HÀM MỚI: Dùng để xoá trắng form
+    function resetForm() {
+        document.getElementById('id_chucvu').value = '';
+        document.getElementById('tenchucvu').value = '';
+        document.getElementById('hesoluong').value = '';
+        document.getElementById('tenchucvu').focus(); // Di chuyển con trỏ về ô đầu tiên
+    }
+
+    function saveRole() {
+      const id = document.getElementById('id_chucvu').value;
+      const ten = document.getElementById('tenchucvu').value.trim();
+      const heso = document.getElementById('hesoluong').value;
+
+      if (!ten || !heso) {
+        alert("Vui lòng nhập đầy đủ thông tin");
+        return;
+      }
+
+      const method = id ? 'PUT' : 'POST';
+      const payload = {
+        id_chucvu: id, // Gửi ID (dù là rỗng hay có)
+        tenchucvu: ten,
+        hesoluong: parseFloat(heso)
+      };
+
+      fetch('role.api.php', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        if (data.status === 'success') {
+          resetForm(); // Dùng hàm mới
+          loadRoles();
+        }
+      });
+    }
+
+    function editRole(role) {
+      document.getElementById('id_chucvu').value = role.id_chucvu;
+      document.getElementById('tenchucvu').value = role.tenchucvu;
+      document.getElementById('hesoluong').value = role.hesoluong;
+      window.scrollTo(0, 0); // Cuộn lên đầu trang để thấy form
+      document.getElementById('tenchucvu').focus();
+    }
+
+    function deleteRole(id) {
+      if (!confirm("Bạn chắc chắn muốn xoá chức vụ này? (Nhân viên thuộc chức vụ này có thể bị ảnh hưởng).")) return;
+
+      fetch('role.api.N-T-G-I.php', { // Tên file API của bạn
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }, // Gửi JSON
+        body: JSON.stringify({ id_chucvu: id }) // Gửi ID trong body
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        if (data.status === 'success') loadRoles();
+      })
+      .catch(error => {
+          alert("Lỗi! Không thể xoá. Kiểm tra console.");
+          console.error("Lỗi khi xoá:", error);
+      });
+    }
+
+    // SỬA LOGIC XOÁ: 
+    // Mình thấy bạn dùng 'x-www-form-urlencoded' cho DELETE
+    // nhưng lại dùng JSON cho POST/PUT.
+    // Mình đã sửa lại hàm deleteRole để gửi JSON cho nhất quán,
+    // bạn hãy đảm bảo 'role.api.php' của bạn có thể đọc JSON từ method DELETE.
+    //
+    // Nếu 'role.api.php' của bạn chỉ đọc 'x-www-form-urlencoded' cho DELETE,
+    // hãy dùng lại code deleteRole CŨ của bạn:
+    /*
+    function deleteRole(id) {
+        if (!confirm("Bạn chắc chắn muốn xoá chức vụ này?")) return;
+
+        fetch('role.api.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `id_chucvu=${id}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') loadRoles();
+        });
+    }
+    */
+  </script>
+</body>
+</html>

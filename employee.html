@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý nhân viên</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: #000000;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #bdc3c7;
+    }
+
+    .form-group {
+      margin: 10px 0;
+    }
+
+    input[type="text"], input[type="date"], select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 10px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn {
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+
+    footer {
+      background-color: #000000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .remove-btn {
+      color: red;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý nhân viên</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Danh sách nhân viên</h2>
+
+      <div>
+        <h3>Thêm nhân viên</h3>
+        <div class="form-group">
+          <label>Tên:</label>
+          <input type="text" id="emp-name">
+        </div>
+        <div class="form-group">
+          <label>Số điện thoại:</label>
+          <input type="text" id="emp-phone">
+        </div>
+        <div class="form-group">
+          <label>Phòng ban:</label>
+          <input type="text" id="emp-department">
+        </div>
+        <div class="form-group">
+          <label>Chức vụ:</label>
+          <input type="text" id="emp-role">
+        </div>
+        <div class="form-group">
+          <label>Địa chỉ:</label>
+          <input type="text" id="emp-address">
+        </div>
+        <div class="form-group">
+          <label>Ngày sinh:</label>
+          <input type="date" id="emp-birthday">
+        </div>
+        <button onclick="addEmployee()">Thêm nhân viên</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>id nhân viên</th>
+            <th>Tên</th>
+            <th>Số điện thoại</th>
+            <th>Phòng ban</th>
+            <th>Chức vụ</th>
+            <th>Địa chỉ</th>
+            <th>Ngày sinh</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="employee-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    // Lấy dữ liệu nhân viên từ localStorage
+    let employees = JSON.parse(localStorage.getItem('employees')) || [];
+
+    // Hiển thị danh sách nhân viên
+    function renderEmployees() {
+      const employeeTable = document.getElementById('employee-table');
+      employeeTable.innerHTML = '';
+      employees.forEach((emp, index) => {
+        employeeTable.innerHTML += `
+          <tr>
+            <td>${emp.id}</td>
+            <td>${emp.name}</td>
+            <td>${emp.phone}</td>
+            <td>${emp.department}</td>
+            <td>${emp.role}</td>
+            <td>${emp.address}</td>
+            <td>${emp.birthday}</td>
+            <td>
+              <button class="action-btn" onclick="editEmployee(${index})">Sửa</button>
+              <button class="action-btn" onclick="deleteEmployee(${index})">Xoá</button>
+            </td>
+          </tr>
+        `;
+      });
+      localStorage.setItem('employees', JSON.stringify(employees));
+    }
+
+    // Thêm nhân viên
+    function addEmployee() {
+  
+      const name = document.getElementById('emp-name').value;
+      const phone = document.getElementById('emp-phone').value;
+      const department = document.getElementById('emp-department').value;
+      const role = document.getElementById('emp-role').value;
+      const address = document.getElementById('emp-address').value;
+      const birthday = document.getElementById('emp-birthday').value;
+
+      if (!name || !phone || !department || !role || !address || !birthday) {
+        alert('Vui lòng điền đầy đủ thông tin nhân viên.');
+        return;
+      }
+
+      const newEmployee = { name, phone, department, role, address, birthday };
+      employees.push(newEmployee);
+      renderEmployees();
+      clearForm();
+    }
+
+    // Sửa thông tin nhân viên
+    function editEmployee(index) {
+      const emp = employees[index];
+      document.getElementById('emp-name').value = emp.name;
+      document.getElementById('emp-phone').value = emp.phone;
+      document.getElementById('emp-department').value = emp.department;
+      document.getElementById('emp-role').value = emp.role;
+      document.getElementById('emp-address').value = emp.address;
+      document.getElementById('emp-birthday').value = emp.birthday;
+
+      // Sau khi sửa, xoá nhân viên cũ và thêm lại nhân viên đã sửa
+      employees.splice(index, 1);
+      renderEmployees();
+    }
+
+    // Xoá nhân viên
+    function deleteEmployee(index) {
+      if (confirm('Bạn chắc chắn muốn xoá nhân viên này?')) {
+        employees.splice(index, 1);
+        renderEmployees();
+      }
+    }
+
+    // Xóa form sau khi thêm nhân viên
+    function clearForm() {
+      document.getElementById('emp-name').value = '';
+      document.getElementById('emp-phone').value = '';
+      document.getElementById('emp-department').value = '';
+      document.getElementById('emp-role').value = '';
+      document.getElementById('emp-address').value = '';
+      document.getElementById('emp-birthday').value = '';
+    }
+
+    // Khởi tạo trang
+    renderEmployees();
+  </script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<?php include 'connect.php'; ?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý nhân viên</title>
+  <style>
+    /* Reset và Cài đặt chung */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f7f6;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background-color: #ffffff;
+      color: #333;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e0e0e0;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    /* Container chính */
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background-color: #2c3e50; /* Màu xanh đậm */
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      margin-bottom: 25px;
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .sidebar a {
+      display: block;
+      color: #ecf0f1;
+      text-decoration: none;
+      padding: 12px 15px;
+      margin: 5px 0;
+      border-radius: 6px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .sidebar a:hover {
+      background-color: #34495e;
+      color: #ffffff;
+    }
+    .sidebar a.active { /* Thêm class này cho trang hiện tại */
+      background-color: #3498db;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Nội dung chính */
+    .main-content {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    /* Thiết kế "Card" */
+    .card {
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .card h2 {
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    /* Form */
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* Bố cục 2 cột */
+      gap: 20px;
+    }
+    /* Các trường hợp cần 1 cột */
+    form label[for="diachi"], 
+    form input[name="diachi"],
+    form button {
+      grid-column: 1 / -1; /* Kéo dài toàn bộ 2 cột */
+    }
+    form label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="date"],
+    input[type="email"],
+    input[type="password"],
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background-color: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background-color: #fff;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    .btn-primary {
+      background-color: #3498db;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #2980b9;
+    }
+    .btn-danger {
+      background-color: #e74c3c;
+      color: white;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+    }
+    .btn-danger:hover {
+      background-color: #c0392b;
+    }
+    .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background-color 0.3s ease;
+    }
+    .logout-btn:hover {
+      background-color: #c0392b;
+    }
+
+    /* Table */
+    .table-responsive {
+      overflow-x: auto; /* Cho phép cuộn ngang nếu bảng quá rộng */
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 15px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      background: #f9f9f9;
+      font-weight: 600;
+      color: #555;
+    }
+    tbody tr:hover {
+      background-color: #f4f7f6;
+    }
+    td:last-child {
+      text-align: center;
+    }
+
+    /* Footer */
+    footer {
+      background-color: #2c3e50;
+      color: #ecf0f1;
+      text-align: center;
+      padding: 20px 0;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý tiền lương</h1>
+    <a href="logout.php" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.php">Trang chủ</a>
+      <a href="employee.php" class="active">Nhân viên</a> <a href="pay.php">Tiền lương</a>
+      <a href="right.php">Phân Quyền</a>
+      <a href="subsidy.php">Phụ Cấp</a>
+      <a href="role.php">Chức Vụ</a>
+      <a href="department.php">Phòng Ban</a>
+      <a href="attendance.php">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h2>Thêm nhân viên</h2>
+        <form id="employeeForm" autocomplete="off">
+          <div>
+            <label for="hoten">Họ tên</label>
+            <input type="text" name="hoten" id="hoten" required>
+          </div>
+          <div>
+            <label for="ngaysinh">Ngày sinh</label>
+            <input type="date" name="ngaysinh" id="ngaysinh" required>
+          </div>
+          <div>
+            <label for="gioitinh">Giới tính</label>
+            <select name="gioitinh" id="gioitinh" required>
+              <option value="">-- Chọn giới tính --</option>
+              <option value="nam">Nam</option>
+              <option value="nữ">Nữ</option>
+            </select>
+          </div>
+          <div>
+            <label for="email">Email</label>
+            <input type="email" name="email" id="email" required>
+          </div>
+          <div>
+            <label for="sdt">Số điện thoại</label>
+            <input type="text" name="sdt" id="sdt" required>
+          </div>
+          <div>
+            <label for="ngayvaolam">Ngày vào làm</label>
+            <input type="date" name="ngayvaolam" id="ngayvaolam" required>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label for="diachi">Địa chỉ</label>
+            <input type="text" name="diachi" id="diachi">
+          </div>
+          <div>
+            <label for="phongbanSelect">Phòng ban</label>
+            <select name="id_phongban" required id="phongbanSelect">
+              <option value="">-- Chọn phòng ban --</option>
+            </select>
+          </div>
+          <div>
+            <label for="chucvuSelect">Chức vụ</label>
+            <select name="id_chucvu" required id="chucvuSelect">
+              <option value="">-- Chọn chức vụ --</option>
+            </select>
+          </div>
+          <div>
+            <label for="trangthai">Trạng thái</label>
+            <select name="trangthai" id="trangthai" required>
+              <option value="1">Đang làm</option>
+              <option value="0">Nghỉ việc</option>
+            </select>
+          </div>
+          <div>
+            <label for="matkhau">Mật khẩu</label>
+            <input type="password" name="matkhau" id="matkhau" required>
+          </div>
+          
+          <button type="submit" class="btn btn-primary">Thêm nhân viên</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Danh sách nhân viên</h2>
+        <div class="table-responsive">
+          <table id="employeeTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Họ tên</th>
+                <th>Ngày sinh</th>
+                <th>Giới tính</th>
+                <th>Email</th>
+                <th>SĐT</th>
+                <th>Địa chỉ</th>
+                <th>Ngày vào làm</th>
+                <th>Phòng ban</th>
+                <th>Chức vụ</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    loadEmployees();
+    loadOptions();
+
+    document.getElementById('employeeForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const data = Object.fromEntries(formData.entries());
+
+      const res = await fetch('employee.api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', ...data })
+      });
+      const result = await res.json();
+      alert(result.message || 'Thêm thành công');
+      this.reset();
+      loadEmployees();
+    });
+
+    async function loadEmployees() {
+      const res = await fetch('employee.api.php?action=read');
+      const data = await res.json();
+      const tbody = document.querySelector('#employeeTable tbody');
+      tbody.innerHTML = '';
+      data.forEach(emp => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${emp.id_nhanvien}</td>
+            <td>${emp.hoten}</td>
+            <td>${emp.ngaysinh}</td>
+            <td>${emp.gioitinh}</td>
+            <td>${emp.email}</td>
+            <td>${emp.sdt}</td>
+            <td>${emp.diachi}</td>
+            <td>${emp.ngayvaolam}</td>
+            <td>${emp.tenphongban}</td>
+            <td>${emp.tenchucvu}</td>
+            <td>${emp.trangthai == 1 ? 'Đang làm' : 'Nghỉ việc'}</td>
+            
+            <td><button class="btn btn-danger" onclick="deleteEmployee(${emp.id_nhanvien})">Xoá</button></td>
+          
+          </tr>
+        `;
+      });
+    }
+
+    async function loadOptions() {
+      const resPB = await fetch('get_phongban.php');
+      const pb = await resPB.json();
+      const pbSelect = document.getElementById('phongbanSelect');
+      pb.forEach(p => {
+        pbSelect.innerHTML += `<option value="${p.id_phongban}">${p.tenphongban}</option>`;
+      });
+
+      const resCV = await fetch('get_chucvu.php');
+      const cv = await resCV.json();
+      const cvSelect = document.getElementById('chucvuSelect');
+      cv.forEach(c => {
+        cvSelect.innerHTML += `<option value="${c.id_chucvu}">${c.tenchucvu}</option>`;
+      });
+    }
+  });
+
+  async function deleteEmployee(id) {
+    if (confirm('Bạn có chắc muốn xoá nhân viên này?')) {
+      const res = await fetch('employee.api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id_nhanvien: id })
+      });
+      const result = await res.json();
+      alert(result.message || 'Đã xoá');
+      location.reload(); // Tải lại trang để cập nhật (hoặc gọi lại loadEmployees())
+    }
+  }
+  </script>
+</body>
+</html>

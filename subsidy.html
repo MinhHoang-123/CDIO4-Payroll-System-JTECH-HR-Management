@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý phụ cấp</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: #000000;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #bdc3c7;
+    }
+
+    .form-group {
+      margin: 10px 0;
+    }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 10px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn {
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+
+    footer {
+      background-color: #000000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .subsidy-box {
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .subsidy-box h4 {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .subsidy-box ul {
+      list-style-type: none;
+      padding-left: 20px;
+    }
+
+    .subsidy-box ul li {
+      margin: 5px 0;
+      font-size: 14px;
+      color: #7f8c8d;
+    }
+
+    .subsidy-box ul li span {
+      font-weight: bold;
+      color: #2980b9;
+    }
+
+    .remove-btn {
+      color: red;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý phụ cấp</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+           <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Danh sách phụ cấp</h2>
+
+      <div>
+        <div class="form-group">
+          <label>Tên phụ cấp:</label>
+          <input type="text" id="subsidy-name">
+        </div>
+        <div class="form-group">
+          <label>Số tiền:</label>
+          <input type="number" id="subsidy-amount">
+        </div>
+        <button onclick="addSubsidy()">Thêm phụ cấp</button>
+      </div>
+
+      <h3>Gán phụ cấp cho nhân viên</h3>
+      <select id="employee-select">
+        <option value="">Chọn nhân viên</option>
+        <!-- List of employees will be populated here -->
+      </select>
+      <select id="subsidy-select">
+        <option value="">Chọn phụ cấp</option>
+        <!-- List of subsidies will be populated here -->
+      </select>
+      <button onclick="assignSubsidy()">Gán phụ cấp</button>
+
+      <h3>Phụ cấp của các nhân viên</h3>
+      <div id="employee-subsidies">
+        <!-- List of employee subsidies will be shown here in boxes -->
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tên phụ cấp</th>
+            <th>Số tiền</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="subsidy-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    // Get employees and subsidies from localStorage
+    let employees = JSON.parse(localStorage.getItem('employees')) || [];
+    let subsidies = JSON.parse(localStorage.getItem('subsidies')) || [];
+
+    // Function to render the employee dropdown and subsidy table
+    function renderPage() {
+      const employeeSelect = document.getElementById('employee-select');
+      const subsidyTable = document.getElementById('subsidy-table');
+      const subsidySelect = document.getElementById('subsidy-select');
+      const employeeSubsidies = document.getElementById('employee-subsidies');
+
+      // Populate employee dropdown
+      employeeSelect.innerHTML = '<option value="">Chọn nhân viên</option>';
+      employees.forEach((emp, index) => {
+        employeeSelect.innerHTML += `<option value="${index}">${emp.name}</option>`;
+      });
+
+      // Populate subsidy dropdown and table
+      subsidySelect.innerHTML = '<option value="">Chọn phụ cấp</option>';
+      subsidyTable.innerHTML = '';
+      subsidies.forEach((sub, index) => {
+        subsidySelect.innerHTML += `<option value="${index}">${sub.name} - ${sub.amount} VND</option>`;
+        subsidyTable.innerHTML += `
+          <tr>
+            <td>${sub.name}</td>
+            <td>${sub.amount} VND</td>
+            <td>
+              <button class="action-btn" onclick="editSubsidy(${index})">Sửa</button>
+              <button class="action-btn" onclick="deleteSubsidy(${index})">Xoá</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      // Render subsidies for each employee
+      employeeSubsidies.innerHTML = '';
+      employees.forEach((emp, empIndex) => {
+        if (emp.subsidies && emp.subsidies.length > 0) {
+          employeeSubsidies.innerHTML += `
+            <div class="subsidy-box">
+              <h4>${emp.name} - Phụ cấp:</h4>
+              <ul>
+                ${emp.subsidies.map((sub, subIndex) => `
+                  <li>
+                    <span>${sub.name}:</span> ${sub.amount} VND 
+                    <span class="remove-btn" onclick="removeSubsidyFromEmployee(${empIndex}, ${subIndex})">[Xoá]</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          `;
+        } else {
+          employeeSubsidies.innerHTML += `<div class="subsidy-box"><h4>${emp.name} - Chưa có phụ cấp</h4></div>`;
+        }
+      });
+
+      localStorage.setItem('subsidies', JSON.stringify(subsidies));
+    }
+
+    // Add new subsidy
+    function addSubsidy() {
+      const subsidyName = document.getElementById('subsidy-name').value;
+      const subsidyAmount = document.getElementById('subsidy-amount').value;
+
+      if (!subsidyName || !subsidyAmount) {
+        alert('Vui lòng điền đầy đủ thông tin.');
+        return;
+      }
+
+      const newSubsidy = { name: subsidyName, amount: parseInt(subsidyAmount) };
+      subsidies.push(newSubsidy);
+      renderPage();
+      clearForm();
+    }
+
+    // Assign subsidy to employee
+    function assignSubsidy() {
+      const employeeIndex = document.getElementById('employee-select').value;
+      const subsidyIndex = document.getElementById('subsidy-select').value;
+
+      if (employeeIndex === '' || subsidyIndex === '') {
+        alert('Vui lòng chọn nhân viên và phụ cấp.');
+        return;
+      }
+
+      if (!employees[employeeIndex].subsidies) {
+        employees[employeeIndex].subsidies = [];
+      }
+
+      const subsidy = subsidies[subsidyIndex];
+      employees[employeeIndex].subsidies.push(subsidy);
+      localStorage.setItem('employees', JSON.stringify(employees));
+      alert(`Đã gán phụ cấp "${subsidy.name}" cho nhân viên "${employees[employeeIndex].name}".`);
+      renderPage();
+    }
+
+    // Remove subsidy from employee
+    function removeSubsidyFromEmployee(empIndex, subIndex) {
+      const emp = employees[empIndex];
+      emp.subsidies.splice(subIndex, 1);
+      employees[empIndex] = emp;
+      localStorage.setItem('employees', JSON.stringify(employees));
+      renderPage();
+    }
+
+    // Edit subsidy
+    function editSubsidy(index) {
+      const subsidy = subsidies[index];
+      const newAmount = prompt(`Sửa số tiền phụ cấp "${subsidy.name}" (hiện tại: ${subsidy.amount} VND):`, subsidy.amount);
+
+      if (newAmount && !isNaN(newAmount)) {
+        subsidies[index].amount = parseInt(newAmount);
+        renderPage();
+      }
+    }
+
+    // Delete subsidy
+    function deleteSubsidy(index) {
+      subsidies.splice(index, 1);
+      renderPage();
+    }
+
+    // Clear the input form
+    function clearForm() {
+      document.getElementById('subsidy-name').value = '';
+      document.getElementById('subsidy-amount').value = '';
+    }
+
+    renderPage();
+  </script>
+</body>
+</html>

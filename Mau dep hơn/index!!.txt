@@ -1,0 +1,243 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+  header("Location: login.php");
+  exit();
+}
+
+// Kết nối CSDL để lấy số liệu thống kê
+require_once 'connect.php';
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+// 1. Lấy tổng số nhân viên
+$total_employees = $conn->query("SELECT COUNT(*) as count FROM nhanvien")->fetch_assoc()['count'];
+
+// 2. Lấy tổng số phòng ban
+$total_departments = $conn->query("SELECT COUNT(*) as count FROM phongban")->fetch_assoc()['count'];
+
+// 3. Lấy số lượt chấm công hôm nay
+$today = date('Y-m-d');
+$today_checkins = $conn->query("SELECT COUNT(*) as count FROM cham_congs WHERE ngaylamviec = '$today' AND trangthai = 1")->fetch_assoc()['count'];
+
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale-1.0">
+  <title>Trang chủ - Quản lý</title>
+  <style>
+    /* Reset và Cài đặt chung */
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2c3e50;
+      --danger-color: #e74c3c;
+      --success-color: #28a745;
+      --light-bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text-color: #333;
+      --border-color: #e0e0e0;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background-color: var(--card-bg);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--secondary-color);
+    }
+
+    /* Container chính */
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      margin-bottom: 25px;
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .sidebar a {
+      display: block;
+      color: #ecf0f1;
+      text-decoration: none;
+      padding: 12px 15px;
+      margin: 5px 0;
+      border-radius: 6px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .sidebar a:hover {
+      background-color: #34495e;
+      color: #ffffff;
+    }
+    .sidebar a.active {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Nội dung chính */
+    .main-content {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    /* Thiết kế "Card" */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .card h2 {
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: var(--secondary-color);
+    }
+
+    /* === THÊM MỚI: Style cho Thẻ Thống Kê === */
+    .stat-card-container {
+      display: grid;
+      /* Hiển thị 3 cột, nếu không đủ thì tự xuống hàng */
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+    .stat-card .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+    .stat-card .stat-label {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--secondary-color);
+      text-align: center;
+    }
+    /* === Kết thúc Style Thẻ Thống Kê === */
+
+
+    /* Buttons */
+    .logout-btn {
+      background-color: var(--danger-color);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background-color 0.3s ease;
+    }
+    .logout-btn:hover {
+      background-color: #c0392b;
+    }
+
+    /* Footer */
+    footer {
+      background-color: var(--secondary-color);
+      color: #ecf0f1;
+      text-align: center;
+      padding: 20px 0;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý tiền lương</h1>
+    <a href="logout.php" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.php" class="active">Trang chủ</a>
+      <a href="employee.php">Nhân viên</a>
+      <a href="pay.php">Tiền lương</a>
+      <a href="right.php">Phân Quyền</a>
+      <a href="subsidy.php">Phụ Cấp</a>
+      <a href="role.php">Chức Vụ</a>
+      <a href="department.php">Phòng Ban</a>
+      <a href="attendance.php">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <div class="stat-card-container">
+        <div class="stat-card">
+          <div class="stat-number"><?= $total_employees ?></div>
+          <div class="stat-label">Tổng số nhân viên</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number"><?= $total_departments ?></div>
+          <div class="stat-label">Tổng số phòng ban</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number"><?= $today_checkins ?></div>
+          <div class="stat-label">Lượt chấm công hôm nay</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Chào mừng, <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'bạn');>!
+        </h2>
+        <p>Chọn một chức năng từ menu bên trái để bắt đầu quản lý.</p>
+        <p style="margin-top: 10px;">Hôm nay là ngày <?= date('d/m/Y') ?>.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty XYZ. Mọi quyền được bảo lưu.
+  </footer>
+</body>
+</html>

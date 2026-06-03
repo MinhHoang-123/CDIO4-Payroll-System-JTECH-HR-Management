@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quản lý chức vụ nhân viên</title>
+  <style>
+    /* giữ nguyên style cũ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      background-color: #000000;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: #000000;
+      color: white;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      background-color: #ecf0f1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #bdc3c7;
+    }
+
+    .form-group {
+      margin: 10px 0;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 10px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn {
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+
+    footer {
+      background-color: #000000;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .remove-btn {
+      color: red;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Quản lý chức vụ nhân viên</h1>
+    <a href="logout.html" class="logout-btn">Đăng xuất</a>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h2>Menu</h2>
+      <a href="index.html">Trang chủ</a>
+      <a href="employee.html">Nhân viên</a>
+      <a href="pay.html">Tiền lương</a>
+      <a href="right.html">Phân Quyền</a>
+      <a href="subsidy.html">Phụ Cấp</a>
+      <a href="role.html">Chức Vụ</a>
+      <a href="department.html">Phòng Ban</a>
+      <a href="attendance.html">Chấm Công</a>
+    </div>
+
+    <div class="main-content">
+      <h2>Danh sách chức vụ</h2>
+
+      <div>
+        <div class="form-group">
+          <label>Tên chức vụ:</label>
+          <input type="text" id="role-name" />
+        </div>
+        <div class="form-group">
+          <label>Hệ số lương:</label>
+          <input type="number" step="0.01" min="0" id="role-hesoluong" />
+        </div>
+        <button onclick="addRole()">Thêm chức vụ</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tên chức vụ</th>
+            <th>Hệ số lương</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="role-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Công ty TNHH Quản Lý Nhân Sự. Mọi quyền được bảo lưu.
+  </footer>
+
+  <script>
+    let roles = JSON.parse(localStorage.getItem("roles")) || [];
+
+    function renderRoles() {
+      const roleTable = document.getElementById("role-table");
+      roleTable.innerHTML = "";
+      roles.forEach((role, index) => {
+        roleTable.innerHTML += `
+          <tr>
+            <td>${role.name}</td>
+            <td>${role.hesoluong}</td>
+            <td>
+              <button class="action-btn" onclick="editRole(${index})">Sửa</button>
+              <button class="action-btn" onclick="deleteRole(${index})">Xoá</button>
+            </td>
+          </tr>
+        `;
+      });
+      localStorage.setItem("roles", JSON.stringify(roles));
+    }
+
+    function addRole() {
+      const roleName = document.getElementById("role-name").value.trim();
+      const hesoluongInput = document.getElementById("role-hesoluong").value.trim();
+      const hesoluong = parseFloat(hesoluongInput);
+
+      if (!roleName) {
+        alert("Vui lòng nhập tên chức vụ.");
+        return;
+      }
+      if (isNaN(hesoluong) || hesoluong < 0) {
+        alert("Vui lòng nhập hệ số lương hợp lệ (số lớn hơn hoặc bằng 0).");
+        return;
+      }
+
+      roles.push({ name: roleName, hesoluong: hesoluong });
+      renderRoles();
+      clearForm();
+    }
+
+    function editRole(index) {
+      const role = roles[index];
+      const newName = prompt("Sửa tên chức vụ", role.name);
+      if (newName === null) return; // user cancel
+      if (!newName.trim()) {
+        alert("Tên chức vụ không được để trống.");
+        return;
+      }
+
+      let newHesoluong = prompt("Sửa hệ số lương", role.hesoluong);
+      if (newHesoluong === null) return; // user cancel
+      newHesoluong = parseFloat(newHesoluong);
+      if (isNaN(newHesoluong) || newHesoluong < 0) {
+        alert("Hệ số lương không hợp lệ.");
+        return;
+      }
+
+      roles[index] = { name: newName.trim(), hesoluong: newHesoluong };
+      renderRoles();
+    }
+
+    function deleteRole(index) {
+      if (confirm("Bạn chắc chắn muốn xoá chức vụ này?")) {
+        roles.splice(index, 1);
+        renderRoles();
+      }
+    }
+
+    function clearForm() {
+      document.getElementById("role-name").value = "";
+      document.getElementById("role-hesoluong").value = "";
+    }
+
+    renderRoles();
+  </script>
+</body>
+</html>
