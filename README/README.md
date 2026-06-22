@@ -16,10 +16,10 @@ A comprehensive web-based platform designed to automate human resources processe
 *   **Frontend Interface:** HTML5, CSS3, JavaScript
 
 ### 👨‍💻 My Role & Contributions
-Within this CDIO 4 project, I served as the Core Backend and Database Developer. My responsibilities included:
-*   **Database Architecture:** Designed, structured, and normalized the MySQL database schema (available in `/database/cdio_db.sql`).
-*   **Backend Logic:** Programmed robust server-side functionalities using PHP to implement secure CRUD operations for personnel data.
+Within this CDIO 4 project, I served as the Core Backend Developer and handled System Integration. My responsibilities included:
+*   **End-to-End Backend Development:** Programmed robust server-side functionalities from scratch using PHP to implement secure CRUD operations for personnel data.
 *   **Algorithm Implementation:** Developed and optimized algorithms to accurately automate monthly payroll, tax deductions, and allowance calculations.
+*   **System Integration & Frontend Refinement:** Handled API integration, refined the existing frontend codebase (HTML, CSS, JavaScript), and seamlessly connected it with the backend logic to ensure a fully functional and bug-free final product.
 
 ### 🚀 How to Run Locally
 1. Clone this repository to your local development environment.
@@ -43,10 +43,10 @@ Within this CDIO 4 project, I served as the Core Backend and Database Developer.
 *   **フロントエンド・インターフェース:** HTML5, CSS3, JavaScript
 
 ### 👨‍💻 役割と貢献 (My Role)
-このCDIO 4プロジェクトにおいて、私はコアバックエンドおよびデータベース開発者として以下の業務を担当しました：
-*   **データベース設計:** MySQLデータベーススキーマの設計、構築、および正規化（`/database/cdio_db.sql` に格納）。
-*   **バックエンドロジック:** PHPを使用して堅牢なサーバー側機能をプログラミングし、人事データの安全なCRUD操作を実装。
+このCDIO 4プロジェクトにおいて、私はバックエンド開発およびシステム統合を担当しました。主な業務内容は以下の通りです：
+*   **エンドツーエンドのバックエンド開発:** PHPを使用してゼロから堅牢なサーバー側機能をプログラミングし、人事データの安全なCRUD操作を実装。
 *   **アルゴリズム実装:** 毎月の給与計算、税金控除、手当計算を正確に自動化するためのアルゴリズムを開発および最適化。
+*   **システム統合とフロントエンドの調整:** APIの統合を行い、既存のフロントエンドコード（HTML、CSS、JavaScript）を調整・修正。バックエンドのロジックとシームレスに連携させ、バグのない完全な最終製品を完成させました。
 
 ### 🚀 ローカル環境での実行方法 (How to Run)
 1. このリポジトリをローカル開発環境にクローンします。
